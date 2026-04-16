@@ -173,7 +173,7 @@ class CelebA_Hybrid_Net_Autoencoder(BaseNet):
         x = self.deconv3(x)
         x = F.interpolate(F.leaky_relu(self.bn2d9(x)), size=[109, 89])
         x = self.deconv4(x)
-        x = F.interpolate(F.leaky_relu(self.bn2d10(x)), size=[218, 178])
+        x = F.interpolate(F.leaky_relu(self.bn2d10(x)), size=[160, 160])
         x = self.deconv5(x)
         x = torch.sigmoid(x)
 

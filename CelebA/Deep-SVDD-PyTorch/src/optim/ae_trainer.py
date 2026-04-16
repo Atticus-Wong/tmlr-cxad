@@ -39,11 +39,6 @@ class AETrainer(BaseTrainer):
         start_time = time.time()
         ae_net.train()
         for epoch in range(self.n_epochs):
-
-            scheduler.step()
-            if epoch in self.lr_milestones:
-                logger.info('  LR scheduler: new learning rate is %g' % float(scheduler.get_lr()[0]))
-
             loss_epoch = 0.0
             n_batches = 0
             epoch_start_time = time.time()
@@ -55,14 +50,8 @@ class AETrainer(BaseTrainer):
                 optimizer.zero_grad()
 
                 # Update network parameters via backpropagation: forward + backward + optimize
-                output_img, mu, log_var = ae_net(inputs)
-                kld_weight = 0.00025
-                
-                recons_loss = F.mse_loss(output_img, inputs)
-
-                kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
-
-                loss = recons_loss + kld_weight * kld_loss
+                ae_out = ae_net(inputs)
+                output_img, loss = self._reconstruction_loss(ae_out, inputs)
                 loss.backward()
                 optimizer.step()
 
@@ -73,6 +62,9 @@ class AETrainer(BaseTrainer):
             epoch_train_time = time.time() - epoch_start_time
             logger.info('  Epoch {}/{}\t Time: {:.3f}\t Loss: {:.8f}'
                         .format(epoch + 1, self.n_epochs, epoch_train_time, loss_epoch / n_batches))
+            scheduler.step()
+            if (epoch + 1) in self.lr_milestones:
+                logger.info('  LR scheduler: new learning rate is %g' % float(scheduler.get_last_lr()[0]))
 
         pretrain_time = time.time() - start_time
         logger.info('Pretraining time: %.3f' % pretrain_time)
@@ -100,15 +92,8 @@ class AETrainer(BaseTrainer):
             for data in test_loader:
                 inputs, labels, idx = data
                 inputs = inputs.to(self.device)
-                output_img, mu, log_var = ae_net(inputs)
-
-                kld_weight = 0.00025
-                
-                recons_loss = F.mse_loss(output_img, inputs)
-
-                kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
-
-                loss = recons_loss + kld_weight * kld_loss
+                ae_out = ae_net(inputs)
+                output_img, loss = self._reconstruction_loss(ae_out, inputs)
                 scores = torch.sum((output_img - inputs) ** 2, dim=tuple(range(1, output_img.dim())))
 
                 # Save triple of (idx, label, score) in a list
@@ -131,3 +116,23 @@ class AETrainer(BaseTrainer):
         test_time = time.time() - start_time
         logger.info('Autoencoder testing time: %.3f' % test_time)
         logger.info('Finished testing autoencoder.')
+
+    @staticmethod
+    def _reconstruction_loss(ae_out, inputs):
+        """Support plain AEs, hybrid AEs, and VAEs with a single trainer."""
+        if isinstance(ae_out, tuple):
+            if len(ae_out) == 3:
+                output_img, mu, log_var = ae_out
+                kld_weight = 0.00025
+                recons_loss = F.mse_loss(output_img, inputs)
+                kld_loss = torch.mean(
+                    -0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1),
+                    dim=0,
+                )
+                return output_img, recons_loss + kld_weight * kld_loss
+
+            output_img = ae_out[0]
+        else:
+            output_img = ae_out
+
+        return output_img, F.mse_loss(output_img, inputs)
