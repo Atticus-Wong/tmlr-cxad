@@ -109,15 +109,17 @@ def run_hybrid_training(settings):
     logger.info("Computation device: %s" % cfg.settings["device"])
     logger.info("Number of dataloader workers: %d" % cfg.settings["n_jobs_dataloader"])
 
-    # Load data with hybrid mode enabled
+    # Load data with hybrid mode enabled for training/testing
     dataset = load_dataset(
         cfg.settings["dataset_name"],
         cfg.settings["data_path"],
         cfg.settings["normal_class"],
         hybrid_mode=True,
     )
+    # Load full dataset WITHOUT hybrid mode for autoencoder pretraining
+    # AETrainer expects 3-tuples (image, label, index), not 4-tuples
     dataset_full = load_dataset(
-        cfg.settings["dataset_name"], cfg.settings["data_path"], -1, hybrid_mode=True
+        cfg.settings["dataset_name"], cfg.settings["data_path"], -1, hybrid_mode=False
     )
 
     # Initialize DeepSVDD model in hybrid mode and set neural network \phi
