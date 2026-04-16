@@ -32,7 +32,7 @@ class CelebA_Hybrid_Net(BaseNet):
         self.bn2d4 = nn.BatchNorm2d(self.mult * 8, eps=1e-04, affine=False)
         self.conv5 = nn.Conv2d(self.mult * 8, self.mult * 16, 5, bias=False, padding=2)
         self.bn2d5 = nn.BatchNorm2d(self.mult * 16, eps=1e-04, affine=False)
-        self.fc1 = nn.Linear(self.mult * 16 * 5 * 5, self.rep_dim, bias=False)
+        self.fc1 = nn.Linear(self.mult * 16 * 6 * 5, self.rep_dim, bias=False)
 
         # Tag prediction head (simple linear classifier on 64-dim representation)
         self.tag_classifier = nn.Linear(self.rep_dim, self.num_tags, bias=True)
@@ -101,7 +101,7 @@ class CelebA_Hybrid_Net_Autoencoder(BaseNet):
             self.conv5.weight, gain=nn.init.calculate_gain("leaky_relu")
         )
         self.bn2d5 = nn.BatchNorm2d(self.mult * 16, eps=1e-04, affine=False)
-        self.fc1 = nn.Linear(self.mult * 16 * 5 * 5, self.rep_dim, bias=False)
+        self.fc1 = nn.Linear(self.mult * 16 * 6 * 5, self.rep_dim, bias=False)
 
         # Decoder
         self.fc2 = nn.Linear(self.rep_dim, self.mult * 16 * 5 * 5, bias=False)
